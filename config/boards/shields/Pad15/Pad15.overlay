@@ -125,32 +125,24 @@
         triggers-per-rotation = <80>; 
     };
 
-    joystick: analog_joystick {
-        compatible = "zmk,pointing-analog-joystick";
-        sampling-hz = <100>;
-        x-ch {
-            io-channels = <&adc 5>;
-            mv-mid = <1650>;
-            mv-min-max = <1600>;
-            mv-deadzone = <10>;
-            scale-multiplier = <1>;
-            scale-divisor = <60>;
-            invert; 
-            evt-type = <INPUT_EV_REL>;
-            input-code = <INPUT_REL_X>;
-        };
-        y-ch {
-            io-channels = <&adc 0>;
-            mv-mid = <1650>;
-            mv-min-max = <1600>;
-            mv-deadzone = <10>;
-            scale-multiplier = <1>;
-            scale-divisor = <60>;
-            invert; 
-            evt-type = <INPUT_EV_REL>;
-            input-code = <INPUT_REL_Y>;
-            report-on-change-only;
-        };
+    joystick: joystick {
+        compatible = "zmk,input-adc-pointer";
+        
+        // 绑定输入通道，指定 X 轴和 Y 轴使用的 ADC 通道号
+        x-ch = <0>; 
+        y-ch = <1>;
+        
+        // 摇杆物理参数微调
+        sampling-hz = <50>;      // 采样率 50Hz
+        scale-multiplier = <1>;  // 速度倍率
+        invert-x;                // 如果左右反了，删掉或加上这一行
+        invert-y;                // 如果上下反了，删掉或加上这一行
+    };
+
+    // 2. 将摇杆信号注入 ZMK 的鼠标虚拟核心
+    joystick_listener {
+        compatible = "zmk,input-listener";
+        device = <&joystick>;
     };
 };
 
@@ -209,6 +201,20 @@
     status = "okay";
     #address-cells = <1>;
     #size-cells = <0>;
-    channel@0 { reg = <0>; zephyr,gain = "ADC_GAIN_1_6"; zephyr,reference = "ADC_REF_INTERNAL"; zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>; zephyr,resolution = <12>; zephyr,input-positive = <NRF_SAADC_AIN0>; };
-    channel@5 { reg = <5>; zephyr,gain = "ADC_GAIN_1_6"; zephyr,reference = "ADC_REF_INTERNAL"; zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>; zephyr,resolution = <12>; zephyr,input-positive = <NRF_SAADC_AIN5>; };
+
+    channel@0 {
+        reg = <0>;
+        zephyr,gain = "ADC_GAIN_1_6";        // 放大倍率
+        zephyr,reference = "ADC_REF_INTERNAL"; // 内部基准电压
+        zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+        zephyr,input-positive = "SAADC_CH_PSELP_PSEL_AnalogInput0"; // AIN0 (P0.02)
+    };
+
+    channel@1 {
+        reg = <1>;
+        zephyr,gain = "ADC_GAIN_1_6";
+        zephyr,reference = "ADC_REF_INTERNAL";
+        zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+        zephyr,input-positive = "SAADC_CH_PSELP_PSEL_AnalogInput5"; // AIN1 (P0.03)
+    };
 };
