@@ -11,7 +11,7 @@ manifest:
     # 引入 ZMK 官方核心组件
     - name: zmk
       remote: zmkfirmware
-      revision: v0.3
+      revision: main
       import: app/west.yml
 
   self:
