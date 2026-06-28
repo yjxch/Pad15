@@ -202,34 +202,39 @@
         compatible = "zmk,analog-input";
         sampling-hz = <100>; /* 轮询频率：100Hz，决定鼠标顺滑度 */
 
-        x-ch {
-            io-channels = <&adc 0>; /* X轴对应的 ADC 通道，请根据原理图修改 */
-            evt-type = <INPUT_EV_REL>; /* 转换为相对坐标事件 */
-            input-code = <INPUT_REL_X>; /* 映射为鼠标 X 轴 */
+		x-ch {
+            io-channels = <&adc 2>; 
+            evt-type = <INPUT_EV_REL>;
+            input-code = <INPUT_REL_X>;
             
-            /* 12位 ADC 的典型校准参数 (0-4095) */
-            mid-code = <2048>; /* 摇杆回中时的数值 */
-            deadzone = <200>;  /* 死区：防止摇杆物理回弹不准导致鼠标漂移 */
-            min-code = <0>;
-            max-code = <4095>;
+            /* -- 以下是针对新版驱动的修改 -- */
+            /* 3.3V 系统下，摇杆回中的理想中心电压是 1650mV (3300的一半) */
+            mv-mid = <1650>;      
             
-            /* 灵敏度控制：被除数越大，鼠标移动越慢 */
+            /* 摇杆从中心推到边缘的最大电压偏移量 */
+            mv-min-max = <1650>;  
+            
+            /* 死区电压范围（毫伏）：防回弹和静置漂移。 */
+            /* 如果发现鼠标自己乱跑，可以把这个值加大到 100 甚至 150 */
+            mv-deadzone = <50>;   
+            /* ----------------------------- */
+            
             multiplier = <1>;
             divisor = <100>; 
         };
 
         y-ch {
-            io-channels = <&adc 5>; /* Y轴对应的 ADC 通道 */
+            io-channels = <&adc 3>;
             evt-type = <INPUT_EV_REL>;
             input-code = <INPUT_REL_Y>;
             
-            mid-code = <2048>;
-            deadzone = <200>;
-            min-code = <0>;
-            max-code = <4095>;
+            mv-mid = <1650>;
+            mv-min-max = <1650>;
+            mv-deadzone = <50>;
+            
             multiplier = <1>;
             divisor = <100>;
-            invertor; /* Y轴由于硬件安装方向，通常需要反转操作 */
+            invertor; /* Y轴通常需要反转 */
         };
     };
 
