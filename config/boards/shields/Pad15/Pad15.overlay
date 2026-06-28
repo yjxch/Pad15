@@ -203,28 +203,19 @@
         sampling-hz = <100>; /* 轮询频率：100Hz，决定鼠标顺滑度 */
 
 		x-ch {
-            io-channels = <&adc 2>; 
+            io-channels = <&adc 0>; 
             evt-type = <INPUT_EV_REL>;
             input-code = <INPUT_REL_X>;
             
-            /* -- 以下是针对新版驱动的修改 -- */
-            /* 3.3V 系统下，摇杆回中的理想中心电压是 1650mV (3300的一半) */
             mv-mid = <1650>;      
-            
-            /* 摇杆从中心推到边缘的最大电压偏移量 */
             mv-min-max = <1650>;  
-            
-            /* 死区电压范围（毫伏）：防回弹和静置漂移。 */
-            /* 如果发现鼠标自己乱跑，可以把这个值加大到 100 甚至 150 */
             mv-deadzone = <50>;   
-            /* ----------------------------- */
             
-            multiplier = <1>;
-            divisor = <100>; 
+            /* 已删除 multiplier 和 divisor */
         };
 
         y-ch {
-            io-channels = <&adc 3>;
+            io-channels = <&adc 5>;
             evt-type = <INPUT_EV_REL>;
             input-code = <INPUT_REL_Y>;
             
@@ -232,9 +223,7 @@
             mv-min-max = <1650>;
             mv-deadzone = <50>;
             
-            multiplier = <1>;
-            divisor = <100>;
-            invertor; /* Y轴通常需要反转 */
+            /* 已删除 multiplier, divisor 和 invertor */
         };
     };
 
