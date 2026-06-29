@@ -192,9 +192,8 @@
 };
 
 
-/* ==========================================
- * 1. 硬件层：唤醒 ADC 并配置 3.6V 量程（绝对不能省）
- * ========================================== */
+
+/* 1. 硬件层：保留 ADC 的 1/6 增益，确保能读到真实的 1.55V */
 &adc {
     status = "okay";
     #address-cells = <1>;
@@ -205,7 +204,7 @@
         zephyr,gain = "ADC_GAIN_1_6";
         zephyr,reference = "ADC_REF_INTERNAL";
         zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-        zephyr,input-positive = <NRF_SAADC_AIN0>; /* 对应 P0.02 */
+        zephyr,input-positive = <NRF_SAADC_AIN0>;
     };
 
     channel@5 {
@@ -213,14 +212,12 @@
         zephyr,gain = "ADC_GAIN_1_6";
         zephyr,reference = "ADC_REF_INTERNAL";
         zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
-        zephyr,input-positive = <NRF_SAADC_AIN5>; /* 对应 P0.29 */
+        zephyr,input-positive = <NRF_SAADC_AIN5>;
     };
 };
 
 / {
-    /* ==========================================
-     * 2. 转换层：将物理电压转为相对位移（不带缩放）
-     * ========================================== */
+    /* 2. 转换层：加上正确的缩放参数 */
     joystick: analog_input_0 {
         compatible = "zmk,analog-input";
         sampling-hz = <100>; 
@@ -232,7 +229,11 @@
             
             mv-mid = <1550>;      
             mv-min-max = <1650>;  
-            mv-deadzone = <50>; /* 恢复到正常的 50 即可 */
+            mv-deadzone = <50>; 
+            
+            /* 正确的语法：恢复原生的降速功能 */
+            scale-multiplier = <1>;
+            scale-divisor = <40>; /* 40是降速倍数，越大鼠标越慢，可自由微调 */
         };
 
         y-ch {
@@ -243,19 +244,18 @@
             mv-mid = <1550>;
             mv-min-max = <1650>;
             mv-deadzone = <50>;
+            
+            scale-multiplier = <1>;
+            scale-divisor = <40>;
+            
+            /* 如果发现 Y 轴上下颠倒了，可以直接取消下面这行的注释 */
+            /* invert; */
         };
     };
 
-    /* ==========================================
-     * 3. 协议层：ZMK 原生监听与修饰（在这里降速！）
-     * ========================================== */
+    /* 3. 协议层：删掉上一回合那个报错的复杂修饰器，回归纯净监听 */
     joystick_listener {
         compatible = "zmk,input-listener";
         device = <&joystick>;
-        
-        /* 核心大招：原生输入修饰器 */
-        /* &zip_xy_scaler 1 40 代表：将输出的坐标乘以 1，除以 40。 */
-        /* 这个 40 就是完美替代了之前被删除的 divisor！数值越大，鼠标越慢 */
-        input-processors = <&zip_xy_scaler 1 40>; 
     };
 };
