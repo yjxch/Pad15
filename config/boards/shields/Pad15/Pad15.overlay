@@ -17,15 +17,6 @@
         zmk,underglow = &pad15_leds;
         zmk,battery = &vbatt;
     };
-
-    /* 强制重写或创建外部电源控制 */
-    ext-power {
-        compatible = "zmk,ext-power-generic";
-        /* 强制指定 gpio0 的 13 号引脚，高电平有效 */
-        control-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
-        init-delay-ms = <50>;
-    };
-
     /* 1. 扫描器定义 */
     kscan0: kscan {
         compatible = "zmk,kscan-gpio-matrix";
@@ -191,6 +182,13 @@
     };
 };
 
+
+/* 强制重写或创建外部电源控制 */
+&ext_power {
+	/* 强制指定 gpio0 的 13 号引脚，高电平有效 */
+	control-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+	init-delay-ms = <50>;
+};
 
 /* ==========================================
  * 1. 硬件层：完美的 ADC 采样配置 (解决读数 0V 的问题)
