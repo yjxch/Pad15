@@ -16,15 +16,10 @@
         zmk,physical-layout = &layout;
         zmk,underglow = &pad15_leds;
         zmk,battery = &vbatt;
-        zmk,ext-power = &pad15_ext_power_hw;
+        /* [极简命名]：直接引用下方被修改的底板原生电源节点 */
+        zmk,ext-power = &ext_power;
+        /* [开启调试]：将内核控制台日志输出到 uart0 */
         zephyr,console = &uart0;
-    };
-
-    pad15_ext_power_hw: pad15_ext_power {
-        compatible = "zmk,ext-power-generic";
-        control-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
-        init-delay-ms = <50>;
-        status = "okay";
     };
 
     /* 1. 扫描器定义 */
@@ -63,18 +58,18 @@
         };
     };
 
-    /* 2. 矩阵转换：将底层的 6 行揉碎，重组成你想要的 21 键视觉布局 */
+    /* 2. 矩阵转换 */
     transform: matrix_transform {
         compatible = "zmk,matrix-transform";
         rows = <6>;
         columns = <4>;
         map = <
-            RC(0,0) RC(0,1) RC(0,2) RC(0,3)  /* 1~3: 物理键 | 4: EC11 */
-            RC(1,0) RC(1,1) RC(1,2) RC(1,3)  /* 5~7: 物理键 | 8: XBOX */
-            RC(2,0) RC(2,1) RC(2,2) RC(5,0)  /* 9~11: 物理键| 12: 触摸1 */
-            RC(3,0) RC(3,1) RC(3,2) RC(5,1)  /* 13~15: 物理键| 16: 触摸2 */
-            RC(4,0) RC(4,1) RC(4,2) RC(5,2)  /* 17~19: 物理键| 20: 触摸3 */
-                                    RC(5,3)  /* 空白区       | 21: 触摸4 */
+            RC(0,0) RC(0,1) RC(0,2) RC(0,3)
+            RC(1,0) RC(1,1) RC(1,2) RC(1,3)
+            RC(2,0) RC(2,1) RC(2,2) RC(5,0)
+            RC(3,0) RC(3,1) RC(3,2) RC(5,1)
+            RC(4,0) RC(4,1) RC(4,2) RC(5,2)
+                                    RC(5,3)
         >;
     };
 
@@ -85,36 +80,30 @@
         transform = <&transform>;
         kscan = <&kscan_combo>;                
         keys = <
-            /* 严格的 21 键定义：宽100 高100 X Y 旋转0 RX0 RY0 */
-            /* 第一排 (4键：含 EC11) */
             &key_physical_attrs 100 100   0   0   0 0 0
             &key_physical_attrs 100 100 100   0   0 0 0
             &key_physical_attrs 100 100 200   0   0 0 0
             &key_physical_attrs 100 100 300   0   0 0 0
-            /* 第二排 (4键：含 XBOX) */
             &key_physical_attrs 100 100   0 100   0 0 0
             &key_physical_attrs 100 100 100 100   0 0 0
             &key_physical_attrs 100 100 200 100   0 0 0
             &key_physical_attrs 100 100 300 100   0 0 0
-            /* 第三排 (4键：含 触摸1) */
             &key_physical_attrs 100 100   0 200   0 0 0
             &key_physical_attrs 100 100 100 200   0 0 0
             &key_physical_attrs 100 100 200 200   0 0 0
             &key_physical_attrs 100 100 300 200   0 0 0
-            /* 第四排 (4键：含 触摸2) */
             &key_physical_attrs 100 100   0 300   0 0 0
             &key_physical_attrs 100 100 100 300   0 0 0
             &key_physical_attrs 100 100 200 300   0 0 0
             &key_physical_attrs 100 100 300 300   0 0 0
-            /* 第五排 (4键：含 触摸3) */
             &key_physical_attrs 100 100   0 400   0 0 0
             &key_physical_attrs 100 100 100 400   0 0 0
             &key_physical_attrs 100 100 200 400   0 0 0
             &key_physical_attrs 100 100 300 400   0 0 0
-            /* 第六排 (仅1键：触摸4) */
             &key_physical_attrs 100 100 300 500   0 0 0
         >;
     };
+
     /* 4. 电池与传感器节点 */
     vbatt: vbatt {
         compatible = "zmk,battery-nrf-vddh";
@@ -133,20 +122,74 @@
         sensors = <&ec11_encoder>;
         triggers-per-rotation = <80>; 
     };
-};
 
+    /* 5. 转换层：ADC 摇杆逻辑 */
+    joystick: analog_input_0 {
+        compatible = "zmk,analog-input";
+        sampling-hz = <100>; 
 
-&uart0 {
+        x-ch {
+            io-channels = <&adc 0>; 
+            evt-type = <INPUT_EV_REL>;
+            input-code = <INPUT_REL_X>;
+            
+            mv-mid = <1400>;
+            mv-min-max = <1650>;
+            mv-deadzone = <100>; 
+            
+            scale-multiplier = <1>;
+            scale-divisor = <40>; 
+        };
+
+        y-ch {
+            io-channels = <&adc 5>;
+            evt-type = <INPUT_EV_REL>;
+            input-code = <INPUT_REL_Y>;
+            
+            mv-mid = <1520>;
+            mv-min-max = <1650>;
+            mv-deadzone = <100>;
+            
+            scale-multiplier = <1>;
+            scale-divisor = <40>;
+        };
+    };
+
+    joystick_listener {
+        compatible = "zmk,input-listener";
+        device = <&joystick>;
+    };
+}; /* 唯一根节点完美闭合 */
+
+/* =======================================================
+ * 外部节点覆盖区 (硬件引脚底层映射)
+ * ======================================================= */
+
+/* [极简电源] 优雅覆盖 nice_nano 底板的电源节点，解决重定义报错 */
+&ext_power {
+    control-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+    init-delay-ms = <50>;
     status = "okay";
-    current-speed = <115200>;
-    // 根据你的硬件接线修改 TX/RX 引脚
-    tx-pin = <6>;
-    rx-pin = <8>;
 };
 
-
-/* --- 硬件外设引用区 (灯带、SPI、ADC、UART 等保持不变) --- */
+/* 现代化的 pinctrl：集中管理所有设备的物理引脚 */
 &pinctrl {
+    /* 为 UART0 声明标准的 TX/RX 引脚组 */
+    uart0_default: uart0_default {
+        group1 {
+            psels = <NRF_PSEL(UART_TX, 0, 6)>,
+                    <NRF_PSEL(UART_RX, 0, 8)>;
+        };
+    };
+    uart0_sleep: uart0_sleep {
+        group1 {
+            psels = <NRF_PSEL(UART_TX, 0, 6)>,
+                    <NRF_PSEL(UART_RX, 0, 8)>;
+            low-power-enable;
+        };
+    };
+
+    /* 为 SPI3 (灯效) 声明引脚组 */
     spi3_default: spi3_default {
         group1 {
             psels = <NRF_PSEL(SPIM_MOSI, 0, 24)>;
@@ -158,6 +201,15 @@
             low-power-enable;
         };
     };
+};
+
+/* [开启日志必备] UART0 引用新规范，彻底摆脱 tx-pin 报错 */
+&uart0 {
+    status = "okay";
+    current-speed = <115200>;
+    pinctrl-0 = <&uart0_default>;
+    pinctrl-1 = <&uart0_sleep>;
+    pinctrl-names = "default", "sleep";
 };
 
 &spi3 {
@@ -196,10 +248,7 @@
     };
 };
 
-
-/* ==========================================
- * 1. 硬件层：完美的 ADC 采样配置 (解决读数 0V 的问题)
- * ========================================== */
+/* 硬件层：SAADC 采样配置 */
 &adc {
     status = "okay";
     #address-cells = <1>;
@@ -209,13 +258,8 @@
         reg = <0>;
         zephyr,gain = "ADC_GAIN_1_6";
         zephyr,reference = "ADC_REF_INTERNAL";
-        
-        /* [修复1] 延长采样时间至 40 微秒：确保高阻抗的摇杆电压能完全充入 ADC 电容 */
         zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 40)>;
-        
-        /* [修复2] 声明 12 位分辨率：让系统知道满载数值是 4095，从而正确计算出 1550mV */
         zephyr,resolution = <12>; 
-        
         zephyr,input-positive = <NRF_SAADC_AIN0>; /* X轴 P0.02 */
     };
 
@@ -223,11 +267,8 @@
         reg = <5>;
         zephyr,gain = "ADC_GAIN_1_6";
         zephyr,reference = "ADC_REF_INTERNAL";
-        
-        /* 同步修复 Y 轴的采样时间和分辨率 */
         zephyr,acquisition-time = <ADC_ACQ_TIME(ADC_ACQ_TIME_MICROSECONDS, 40)>;
         zephyr,resolution = <12>;
-        
         zephyr,input-positive = <NRF_SAADC_AIN5>; /* Y轴 P0.29 */
     };
 };
