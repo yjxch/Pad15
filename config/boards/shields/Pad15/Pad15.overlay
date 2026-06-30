@@ -16,17 +16,16 @@
         zmk,physical-layout = &layout;
         zmk,underglow = &pad15_leds;
         zmk,battery = &vbatt;
-        /* [极简命名]：直接引用下方被修改的底板原生电源节点 */
+        
+        /* 1. 极简引用电源节点 (报错解决关键点) */
         zmk,ext-power = &ext_power;
+        
+        /* 2. 核心修复：已彻底删除 zephyr,console = &uart0; 
+         * 这样日志才会乖乖走到你的 Web Serial 网页端
+         */
     };
 
-    ext_power {
-        control-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
-        init-delay-ms = <50>;
-        status = "okay";
-    };
-
-    /* 1. 扫描器定义 */
+    /* 扫描器定义 */
     kscan0: kscan {
         compatible = "zmk,kscan-gpio-matrix";
         diode-direction = "col2row";
@@ -62,7 +61,7 @@
         };
     };
 
-    /* 2. 矩阵转换 */
+    /* 矩阵转换 */
     transform: matrix_transform {
         compatible = "zmk,matrix-transform";
         rows = <6>;
@@ -77,7 +76,7 @@
         >;
     };
 
-    /* 3. 物理布局 */
+    /* 物理布局 */
     layout: layout {
         compatible = "zmk,physical-layout";
         display-name = "Pad15";
@@ -108,7 +107,7 @@
         >;
     };
 
-    /* 4. 电池与传感器节点 */
+    /* 电池与传感器节点 */
     vbatt: vbatt {
         compatible = "zmk,battery-nrf-vddh";
     };
@@ -127,7 +126,7 @@
         triggers-per-rotation = <80>; 
     };
 
-    /* 5. 转换层：ADC 摇杆逻辑 */
+    /* 转换层：ADC 摇杆逻辑 */
     joystick: analog_input_0 {
         compatible = "zmk,analog-input";
         sampling-hz = <100>; 
@@ -163,15 +162,21 @@
         compatible = "zmk,input-listener";
         device = <&joystick>;
     };
-}; 
+}; /* 根节点闭合 */
 
 /* =======================================================
- * 外部节点覆盖区 (硬件引脚底层映射)
+ * 外部节点覆盖区 (使用 & 语法，绝不重定义)
  * ======================================================= */
 
-/* 现代化的 pinctrl：集中管理所有设备的物理引脚 */
+/* 优雅覆盖底板的电源节点 (报错终结者) */
+&ext_power {
+    control-gpios = <&gpio0 13 GPIO_ACTIVE_HIGH>;
+    init-delay-ms = <50>;
+    status = "okay";
+};
+
+/* 现代化的 pinctrl：只保留 SPI3 灯效 (UART0 已彻底铲除) */
 &pinctrl {
-    /* 为 SPI3 (灯效) 声明引脚组 */
     spi3_default: spi3_default {
         group1 {
             psels = <NRF_PSEL(SPIM_MOSI, 0, 24)>;
@@ -209,7 +214,7 @@
         led4: led_4 { x = <10>; y = <10>; };
         led5: led_5 { x = <20>; y = <10>; };
         led6: led_6 { x = <0>;   y = <20>; };
-        led7: led_7 { x = <10>; y = <20>; };
+        led7: led7 { x = <10>; y = <20>; };
         led8: led_8 { x = <20>; y = <20>; };
         led15: led_15 { x = <30>; y = <20>; };
         led9:  led_9  { x = <0>;   y = <30>; };
